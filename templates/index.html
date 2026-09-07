@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ chatbot_title }}</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #f0f2f5;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chat-container {
+    width: 100%;
+    max-width: 480px;
+    height: 90vh;
+    max-height: 700px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .chat-header {
+    background: #2563eb;
+    color: #ffffff;
+    padding: 16px 20px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .chat-header span {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    line-height: 1.4;
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+
+  .message.user {
+    align-self: flex-end;
+    background: #2563eb;
+    color: #ffffff;
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.bot {
+    align-self: flex-start;
+    background: #eef1f5;
+    color: #1f2937;
+    border-bottom-left-radius: 4px;
+  }
+
+  .message.typing {
+    align-self: flex-start;
+    color: #6b7280;
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  .chat-input-area {
+    display: flex;
+    padding: 12px;
+    border-top: 1px solid #e5e7eb;
+    gap: 8px;
+  }
+
+  #userInput {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  #userInput:focus {
+    border-color: #2563eb;
+  }
+
+  #sendBtn {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  #sendBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #sendBtn:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="chat-header">
+    {{ chatbot_title }}
+    <span>Ask me anything about this subject</span>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="message bot">
+      Hi! I'm {{ chatbot_title }}. Ask me a study question to get started.
+    </div>
+  </div>
+
+  <div class="chat-input-area">
+    <input type="text" id="userInput" placeholder="Type your question..." autocomplete="off">
+    <button id="sendBtn">Send</button>
+  </div>
+</div>
+
+<script>
+  const chatMessages = document.getElementById("chatMessages");
+  const userInput = document.getElementById("userInput");
+  const sendBtn = document.getElementById("sendBtn");
+
+  function addMessage(text, sender) {
+    const div = document.createElement("div");
+    div.className = "message " + sender;
+    div.textContent = text;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return div;
+  }
+
+  async function sendMessage() {
+    const message = userInput.value.trim();
+    if (!message) return;
+
+    addMessage(message, "user");
+    userInput.value = "";
+    userInput.disabled = true;
+    sendBtn.disabled = true;
+
+    const typingEl = addMessage("Thinking...", "typing");
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await res.json();
+      typingEl.remove();
+      addMessage(data.reply, "bot");
+    } catch (err) {
+      typingEl.remove();
+      addMessage("Network error. Please try again.", "bot");
+    } finally {
+      userInput.disabled = false;
+      sendBtn.disabled = false;
+      userInput.focus();
+    }
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  userInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
+
+</body>
+</html>
